@@ -143,8 +143,22 @@ def decoding_layer_train(encoder_state, dec_cell, dec_embed_input,
     :param keep_prob: Dropout keep probability
     :return: BasicDecoderOutput containing training logits and sample_id
     """
-    # TODO: Implement Function
-    return None
+    # Helper for the training process. Used by BasicDecoder to read inputs.
+    training_helper = tf.contrib.seq2seq.TrainingHelper(inputs=dec_embed_input,
+                                                        sequence_length=target_sequence_length,
+                                                        time_major=False)
+
+    # Basic decoder
+    training_decoder = tf.contrib.seq2seq.BasicDecoder(dec_cell,
+                                                       training_helper,
+                                                       encoder_state,
+                                                       output_layer)
+
+    # Perform dynamic decoding using the decoder
+    training_decoder_output, _ = tf.contrib.seq2seq.dynamic_decode(training_decoder,
+                                                                   impute_finished=True,
+                                                                   maximum_iterations=max_summary_length)
+    return training_decoder_output
 
 
 def decoding_layer_infer(encoder_state, dec_cell, dec_embeddings, start_of_sequence_id,
@@ -165,8 +179,25 @@ def decoding_layer_infer(encoder_state, dec_cell, dec_embeddings, start_of_seque
     :param keep_prob: Dropout keep probability
     :return: BasicDecoderOutput containing inference logits and sample_id
     """
-    # TODO: Implement Function
-    return None
+    start_tokens = tf.tile(tf.constant([start_of_sequence_id], dtype=tf.int32), [batch_size],
+                           name='start_tokens')
+
+    # Helper for the inference process.
+    inference_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(dec_embeddings,
+                                                                start_tokens,
+                                                                end_of_sequence_id)
+
+    # Basic decoder
+    inference_decoder = tf.contrib.seq2seq.BasicDecoder(dec_cell,
+                                                        inference_helper,
+                                                        encoder_state,
+                                                        output_layer)
+
+    # Perform dynamic decoding using the decoder
+    inference_decoder_output, _ = tf.contrib.seq2seq.dynamic_decode(inference_decoder,
+                                                                    impute_finished=True,
+                                                                    maximum_iterations=max_target_sequence_length)
+    return inference_decoder_output
 
 
 def decoding_layer(dec_input, encoder_state,
@@ -358,7 +389,7 @@ def train():
     encoding_embedding_size = 200
     decoding_embedding_size = 200
     # Learning Rate
-    learning_rate = 0.5
+    learning_rate = 0.01
     # Dropout Keep Probability
     keep_probability = 0.5
     display_step = 1
@@ -520,18 +551,7 @@ def translate():
     print('  French Words: {}'.format(" ".join([target_int_to_vocab[i] for i in translate_logits])))
 
 def run_all_tests():
-    source_path = 'data/small_vocab_en'
-    target_path = 'data/small_vocab_fr'
-    source_text = helper.load_data(source_path)
-    target_text = helper.load_data(target_path)
-
-    sentences = source_text.split('\n')
-    word_counts = [len(sentence.split()) for sentence in sentences]
-
     tests.test_text_to_ids(text_to_ids)
-
-    helper.preprocess_and_save_data(source_path, target_path, text_to_ids)
-    (source_int_text, target_int_text), (source_vocab_to_int, target_vocab_to_int), _ = helper.load_preprocess()
 
     check_tensorflow_gpu()
     tests.test_model_inputs(model_inputs)
@@ -542,8 +562,8 @@ def run_all_tests():
     reload(tests)
     tests.test_encoding_layer(encoding_layer)
 
-    # tests.test_decoding_layer_train(decoding_layer_train)
-    # tests.test_decoding_layer_infer(decoding_layer_infer)
+    tests.test_decoding_layer_train(decoding_layer_train)
+    tests.test_decoding_layer_infer(decoding_layer_infer)
     tests.test_decoding_layer(decoding_layer)
     tests.test_seq2seq_model(seq2seq_model)
 
@@ -563,7 +583,8 @@ if __name__ == '__main__':
 
     check_tensorflow_gpu()
 
-    train()
+    # train()
+    run_all_tests()
 
 
 
