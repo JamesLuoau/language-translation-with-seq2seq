@@ -583,8 +583,8 @@ if __name__ == '__main__':
 
     check_tensorflow_gpu()
 
-    # train()
-    run_all_tests()
+    train()
+    # run_all_tests()
 
 
 
