@@ -14,6 +14,10 @@ will train your network
 GPU needed
 
 # Result
+```
+8 Epoches: 
+    Train Accuracy: 0.9621, Validation Accuracy: 0.9584, Loss: 0.0396
+```
 ## Our Version
 ![Our Version](imgs/our_translate_result.png)
 
