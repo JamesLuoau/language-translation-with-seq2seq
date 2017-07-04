@@ -240,42 +240,31 @@ def decoding_layer(dec_input, encoder_state,
     # 4. Set up a training decoder and an inference decoder
     # Training Decoder
     with tf.variable_scope("decode"):
-        # Helper for the training process. Used by BasicDecoder to read inputs.
-        training_helper = tf.contrib.seq2seq.TrainingHelper(inputs=dec_embed_input,
-                                                            sequence_length=target_sequence_length,
-                                                            time_major=False)
+        training_decoder_output = decoding_layer_train(
+            encoder_state=encoder_state,
+            dec_cell=dec_cell,
+            dec_embed_input=dec_embed_input,
+            target_sequence_length=target_sequence_length,
+            max_summary_length=max_target_sequence_length,
+            output_layer=output_layer,
+            keep_prob=keep_prob
+        )
 
-        # Basic decoder
-        training_decoder = tf.contrib.seq2seq.BasicDecoder(dec_cell,
-                                                           training_helper,
-                                                           encoder_state,
-                                                           output_layer)
-
-        # Perform dynamic decoding using the decoder
-        training_decoder_output, _ = tf.contrib.seq2seq.dynamic_decode(training_decoder,
-                                                                       impute_finished=True,
-                                                                       maximum_iterations=max_target_sequence_length)
     # 5. Inference Decoder
     # Reuses the same parameters trained by the training process
     with tf.variable_scope("decode", reuse=True):
-        start_tokens = tf.tile(tf.constant([target_vocab_to_int['<GO>']], dtype=tf.int32), [batch_size],
-                               name='start_tokens')
-
-        # Helper for the inference process.
-        inference_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(dec_embeddings,
-                                                                    start_tokens,
-                                                                    target_vocab_to_int['<EOS>'])
-
-        # Basic decoder
-        inference_decoder = tf.contrib.seq2seq.BasicDecoder(dec_cell,
-                                                            inference_helper,
-                                                            encoder_state,
-                                                            output_layer)
-
-        # Perform dynamic decoding using the decoder
-        inference_decoder_output, _ = tf.contrib.seq2seq.dynamic_decode(inference_decoder,
-                                                                        impute_finished=True,
-                                                                        maximum_iterations=max_target_sequence_length)
+        inference_decoder_output = decoding_layer_infer(
+            encoder_state=encoder_state,
+            dec_cell= dec_cell,
+            dec_embeddings=dec_embeddings,
+            start_of_sequence_id=target_vocab_to_int['<GO>'],
+            end_of_sequence_id=target_vocab_to_int['<EOS>'],
+            max_target_sequence_length=max_target_sequence_length,
+            vocab_size=target_vocab_size,
+            output_layer=output_layer,
+            batch_size=batch_size,
+            keep_prob=keep_prob
+        )
 
     return training_decoder_output, inference_decoder_output
 
@@ -378,7 +367,7 @@ def get_accuracy(target, logits):
 
 def train():
     # Number of Epochs
-    epochs = 4
+    epochs = 8
     # Batch Size
     batch_size = 512
     # RNN Size
